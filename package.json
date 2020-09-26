@@ -1,0 +1,24 @@
+{
+  "name": "pos-api-system",
+  "version": "1.0.0",
+  "description": "point of sales system",
+  "main": "app.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "env-cmd -f ./.env node app.js",
+    "server": "env-cmd -f ./.env nodemon app.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "env-cmd": "^9.0.3",
+    "express": "^4.16.4",
+    "geolib": "^3.3.1",
+    "mongoose": "5.6.2",
+    "validator": "^11.0.0"
+  },
+  "devDependencies": {
+    "nodemon": "1.19.1"
+  }
+}
