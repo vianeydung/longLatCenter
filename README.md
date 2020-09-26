@@ -1,1 +1,1 @@
-# Tool get center long lat
+# Tool get center long lat of polygon bounds
