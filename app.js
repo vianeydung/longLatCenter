@@ -78,18 +78,53 @@ app.post('/api/patchFloor', async (req, res) => {
 });
 // config routes
 app.get('/addLongLat', async (req, res) => {
+  // const Model = client.db('msx-property-readmodel').collection("primary-transactions");
   const Model = client.db(req.body.dbName).collection("primary-transactions");
-  const units = await Model.find({'project.id': req.body.projectId});
+  let projects = null;
+  if(req.body.projectId){
+    projects = [{id: req.body.projectId}]
+  } else {
+    projects = await Model.find({}, {'id': 1}).toArray();
+  }
+  if(!projects){
+    res.send('fail');
+    return;
+  }
+  const projectIds = projects.map(p => p.id);
+  const units = await Model.find({
+    'project.id': {$in: projectIds},
+    'customer.location': {$in:[null,{}], $exists: false},
+    // 'id': '00221bb7-8e76-4ce6-b3e9-f6c2429f7ee5'
+  }).toArray();
   // console.log(Geo);
   for (const unit of units) {
-    if(unit.customer && unit.customer.info && unit.customer.info.address.province && unit.customer.info.address.district){
+    if(unit.customer && unit.customer.info && unit.customer.info && unit.customer.info.address && unit.customer.info.address.province && unit.customer.info.address.district){
       console.log('unit.id : ', unit.id);
       console.log('address : ', unit.customer.info.address.fullAddress);
-      const objProvince = Geo.find(g => unit.customer.info.address.province.includes(g.name));
-      if(objProvince){
-        const objDistricts = objProvince.districts.find(g => unit.customer.info.address.district.includes(g.name));
-        if(objDistricts){
-          const bounds = objDistricts.latlngs.map(g => {
+      const province = unit.customer.info.address.province.replace(/[–-]/g, '');
+      const district = unit.customer.info.address.district.replace(/[–-]/g, '');
+      console.log(province, district);
+      const geoProvince = Geo.find(g => {
+        console.log(g.name);
+        const str = g.name.replace(/[–-]/g, '');
+        return province.includes(str);
+      });
+      // console.log(geoProvince);
+      if(geoProvince){
+        const match = district.match(/([QHqh]+\.\s+)(\d+)/i);
+        const match1 = district.match(/([tpTPtxTX]{2}\.\s+)(.+)/i);
+        console.log(match);
+        const geoDistricts = geoProvince.districts.find(g => {
+          const str = g.name.replace(/[–-]/g, '');
+          return (
+          district.includes(str) || 
+          (match && match.length > 1 && g.name.includes(match[2])) ||
+          (match1 && match1.length > 1 && g.name.includes(match1[2]))
+          )
+        });
+        console.log(geoDistricts);
+        if(geoDistricts){
+          const bounds = geoDistricts.latlngs.map(g => {
             return {
               longitude: g[0],
               latitude:  g[1]
@@ -101,9 +136,12 @@ app.get('/addLongLat', async (req, res) => {
             type: 'point',
             coordinates: point
           }
-          Model.updateOne({id: unit.id}, {'customer': unit.customer})
+          Model.updateOne({
+            id: unit.id,
+            'customer.location': {$in:[null,{}], $exists: false}
+          }, {$set: {'customer': unit.customer}})
           .then(res => {
-            console.log(res);
+            // console.log(res);
           })
           .catch(err => console.log(err))
           ;
@@ -113,6 +151,7 @@ app.get('/addLongLat', async (req, res) => {
     }
   }
   res.send('success');
+  return;
 })
 
 console.log(config);
